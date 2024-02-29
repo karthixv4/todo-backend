@@ -62,7 +62,11 @@ todoRouter.get("/all", async (c) => {
   }).$extends(withAccelerate());
 
   try {
-    const todos = await prisma.todo.findMany();
+    const todos = await prisma.todo.findMany({
+      include: {
+        category: true,
+      }
+    });
     c.status(200);
     return c.json({
       todos: todos,
@@ -106,6 +110,9 @@ todoRouter.put("/updateTodo", async (c) => {
     const updatedTodo = await prisma.todo.update({
       where: { id: body.id },
       data: todoData,
+      include: {
+        category: true,
+      },
     });
     c.status(200);
     return c.json({

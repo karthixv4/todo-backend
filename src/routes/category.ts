@@ -24,7 +24,7 @@ categoryRouter.post("/createCategory", async (c) => {
   });
   c.status(201);
   return c.json({
-    id: post.id,
+    category: post,
   });
 });
 
