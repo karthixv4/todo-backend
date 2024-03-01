@@ -5,21 +5,37 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 export const categoryRouter = new Hono<{
   Bindings: {
     DATABASE_URL: string;
-  };
+  },
+  Variables :{
+    userEmail: string
+  }
 }>();
 
 categoryRouter.post("/createCategory", async (c) => {
   const body = await c.req.json();
+  const userEmail = c.get('userEmail')
   const prisma = new PrismaClient({
     datasourceUrl: c.env?.DATABASE_URL,
   }).$extends(withAccelerate());
+  const thisUser = await prisma.user.findUnique({
+    where:{
+      email: userEmail
+    }
+  })
 
+  if(!thisUser){
+    c.status(400);
+    return c.json({
+      err: "unable to create a category, user might be missing"
+    })
+  }
   const post = await prisma.category.create({
     data: {
       name: body.name,
       todos: {
         create: [],
       },
+      userId: thisUser.id
     },
   });
   c.status(201);

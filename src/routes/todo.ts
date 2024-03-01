@@ -5,7 +5,10 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 export const todoRouter = new Hono<{
   Bindings: {
     DATABASE_URL: string;
-  };
+  },
+  Variables:{
+    userEmail: string
+  }
 }>();
 // interface Category {
 //     id: number;
@@ -22,11 +25,23 @@ interface TodoData {
 //Create a Todo
 todoRouter.post("/createTodo", async (c) => {
   const body = await c.req.json();
+  const userEmail = c.get('userEmail')
   const prisma = new PrismaClient({
     datasourceUrl: c.env?.DATABASE_URL,
   }).$extends(withAccelerate());
 
   try {
+    const thisUser = await prisma.user.findUnique({
+      where:{
+        email: userEmail
+      }
+    })
+    if(!thisUser){
+      c.status(400);
+      return c.json({
+        err: "unable to create a category, user might be missing"
+      })
+    }
     const todo = await prisma.todo.create({
       data: {
         title: body.title,
@@ -34,6 +49,7 @@ todoRouter.post("/createTodo", async (c) => {
         isCompleted: body?.isCompleted,
         createdAt: body?.createdAt,
         dueAt: body?.dueAt,
+        userId: thisUser.id
       },
     });
     if (todo) {
@@ -60,9 +76,24 @@ todoRouter.get("/all", async (c) => {
   const prisma = new PrismaClient({
     datasourceUrl: c.env?.DATABASE_URL,
   }).$extends(withAccelerate());
-
+  const userEmail = c.get('userEmail');
+ 
   try {
+    const thisUser = await prisma.user.findUnique({
+      where:{
+        email: userEmail
+      }
+    })
+    if(!thisUser){
+      c.status(400);
+      return c.json({
+        err: "unable to create a category, user might be missing"
+      })
+    }
     const todos = await prisma.todo.findMany({
+      where:{
+        userId: thisUser.id
+      },
       include: {
         category: true,
       }
