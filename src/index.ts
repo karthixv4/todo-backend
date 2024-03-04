@@ -13,7 +13,7 @@ const app = new Hono<{
     userEmail: string
   }
 }>()
-app.use('/api/*', cors());
+app.use('*', cors());
 app.use('/api/v1/*', async(c, next)=>{
   const auth = c.req.header("Auth");
   if(!auth){

@@ -45,12 +45,27 @@ categoryRouter.post("/createCategory", async (c) => {
 });
 
 categoryRouter.get("/all", async (c) => {
+  const userEmail = c.get('userEmail');
   const prisma = new PrismaClient({
     datasourceUrl: c.env?.DATABASE_URL,
   }).$extends(withAccelerate());
 
   try {
+    const thisUser = await prisma.user.findUnique({
+      where:{
+        email: userEmail
+      }
+    })
+    if(!thisUser){
+      c.status(400);
+      return c.json({
+        err: "unable to create a category, user might be missing"
+      })
+    }
     const categories = await prisma.category.findMany({
+      where:{
+        userId: thisUser.id
+      },
       include: {
         todos: true,
       },
@@ -79,6 +94,9 @@ categoryRouter.delete("/delete", async(c)=>{
         const deletedCategory = await prisma.category.delete({
             where: {
                 id: catIdInt
+            }, 
+            include :{
+              todos: true
             }
         })
         c.status(200);

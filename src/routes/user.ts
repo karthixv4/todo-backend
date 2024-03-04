@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { PrismaClient } from "@prisma/client/edge";
+import { PrismaClient, Prisma } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
 import { jwt } from "hono/jwt";
 import { sign } from "hono/jwt";
@@ -25,7 +25,7 @@ userRouter.post("/signup", async (c) => {
       },
     });
     if (user) {
-      const token = await sign({email:user.email}, c.env?.JWT_SECRET_KEY);
+      const token = await sign({ email: user.email }, c.env?.JWT_SECRET_KEY);
       c.status(201);
       return c.json({
         user: {
@@ -41,10 +41,19 @@ userRouter.post("/signup", async (c) => {
       });
     }
   } catch (error) {
-    c.status(501);
-    return c.json({
-      error: "somethign went wrong in our server",
-    });
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        c.status(400);
+        return c.json({
+          exists: "userexists",
+        });
+      }
+    } else {
+      c.status(501);
+      return c.json({
+        error: error,
+      });
+    }
   }
 });
 
@@ -73,34 +82,30 @@ userRouter.get("/all", async (c) => {
   }
 });
 
-userRouter.post('/signin', async(c)=>{
+userRouter.post("/signin", async (c) => {
   const email = c.req.header("email");
   const pass = c.req.header("password");
 
   const prisma = new PrismaClient({
-    datasourceUrl: c.env?.DATABASE_URL
+    datasourceUrl: c.env?.DATABASE_URL,
   }).$extends(withAccelerate());
-  
-  try{
+
+  try {
     const user = await prisma.user.findUnique({
-      where:{
+      where: {
         email: email,
-        password: pass
-      }
+        password: pass,
+      },
     });
-    if(user){
-      const token = await sign({email:email}, c.env?.JWT_SECRET_KEY);
+    if (user) {
+      const token = await sign({ email: email }, c.env?.JWT_SECRET_KEY);
       c.status(200);
       return c.json({
-        token: token
-      })
-    }else{
+        token: token,
+      });
+    } else {
       c.status(401);
-      return c.json({error: "unauthorized"})
+      return c.json({ error: "unauthorized" });
     }
-    
-  }catch(error){
-
-  }
-  
-})
+  } catch (error) {}
+});

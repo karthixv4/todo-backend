@@ -49,8 +49,12 @@ todoRouter.post("/createTodo", async (c) => {
         isCompleted: body?.isCompleted,
         createdAt: body?.createdAt,
         dueAt: body?.dueAt,
-        userId: thisUser.id
+        userId: thisUser.id,
+        categoryId: body?.categoryId
       },
+      include: {
+        category: true,
+      }
     });
     if (todo) {
       c.status(201);
